@@ -1,0 +1,152 @@
+data<-subset(ins,select=-c(id))
+summary(data)
+dim(data)
+
+
+boxplot(data$Age)
+boxplot(data$Annual_Premium)#outliner
+boxplot(data$Policy_Sales_Channel)
+boxplot(data$Previously_Insured)
+boxplot(data$Vintage)
+
+sum(is.na(data))
+#eliminare outliner(variabila annual premium)
+box <- boxplot.stats(data$Annual_Premium)
+out <- box$out
+ad1 <- data[ !data$Annual_Premium %in% out, ]
+data <- ad1
+boxplot(data$Annual_Premium)
+
+box_theme<- theme(axis.line=element_blank(),axis.title=element_blank(), axis.ticks=element_blank(), axis.text=element_blank())
+box_theme_y<- theme(axis.line.y=element_blank(),axis.title.y=element_blank(), axis.ticks.y=element_blank(), axis.text.y=element_blank(),legend.position="none")
+
+plot_grid(ggplot(data, aes(data$Vintage))+ geom_histogram(binwidth = 10),ggplot(data, aes(x="",y=data$Vintage))+ geom_boxplot(width=0.1)+coord_flip()+box_theme, align = "v",ncol = 1)
+plot_grid(ggplot(data, aes(data$Age))+ geom_histogram(binwidth = 10),ggplot(data, aes(x="",y=data$Age))+ geom_boxplot(width=0.1)+coord_flip()+box_theme, align = "v",ncol = 1)
+plot_grid(ggplot(data, aes(data$Policy_Sales_Channel))+ geom_histogram(binwidth = 10),ggplot(data, aes(x="",y=data$Policy_Sales_Channel))+ geom_boxplot(width=0.1)+coord_flip()+box_theme, align = "v",ncol = 1)
+
+
+numerical_columns=['Age', 'Region_Code','Annual_Premium','Vintage']
+categorical_columns=['Gender','Driving_License','Previously_Insured','Vehicle_Age','Vehicle_Damage','Response']
+
+#cod 2 crearea retelei neurale
+
+
+data<-subset(db_RN_proiect,select=-c(id,Policy_Sales_Channel,Vehicle_Age))
+hist(data$Annual_Premium)
+hist(data$Age)
+hist(data$Vintage)
+
+
+library(neuralnet)
+library(nnet)
+library(plyr)
+
+data <-na.omit(data)
+nrow(data)
+ncol(data)
+
+
+
+data$Vehicle_Damage<- ifelse(data$Vehicle_Damage=="Yes",1,0)
+data$Gender<- ifelse(data$Gender=="Male",1,0)
+
+
+data$Age <-as.numeric (as.character (data$Age))
+data$Annual_Premium <-as.numeric (as.character (data$Annual_Premium))
+
+data$Vintage <-as.numeric(as.character(data$Vintage))
+
+keeps <- c("Gender","Annual_Premium","Vintage","Age","Previously_Insured", "Driving_License","Vehicle_Damage")
+data <-data[keeps]
+
+data <-scale(data)
+
+f<-Vehicle_Damage ~ Gender + Annual_Premium + Vintage + Age + Previously_Insured + Driving_License
+
+
+
+
+
+#MoDEL 1 COMPLET MLP#################
+summary(data)
+dim(data)
+attach(NN)
+
+data<-subset(db_RN_proiect,select=-c(id,Policy_Sales_Channel,Vehicle_Age))
+hist(data$Annual_Premium)
+hist(data$Age)
+hist(data$Vintage)
+
+
+library(neuralnet)
+library(nnet)
+library(plyr)
+
+data <-na.omit(data)
+nrow(data)
+ncol(data)
+
+
+
+data$Vehicle_Damage<- ifelse(data$Vehicle_Damage=="Yes",1,0)
+data$Gender<- ifelse(data$Gender=="Male",1,0)
+
+
+data$Age <-as.numeric (as.character (data$Age))
+data$Annual_Premium <-as.numeric (as.character (data$Annual_Premium))
+
+data$Vintage <-as.numeric(as.character(data$Vintage))
+
+keeps <- c("Gender","Annual_Premium","Vintage","Age","Previously_Insured", "Driving_License","Vehicle_Damage")
+data <-data[keeps]
+
+data <-scale(data)
+
+f<-Vehicle_Damage ~ Gender + Annual_Premium + Vintage + Age + Previously_Insured + Driving_License
+
+set.seed (1)
+n=nrow(data)
+train <- sample (1:n, 4000 , FALSE )
+
+fit <- neuralnet(f,
+                  data = data[train ,],
+                  hidden =7,
+                  algorithm = "rprop+",
+                  err.fct = "sse",
+                  act.fct = "logistic",
+                  linear.output = FALSE )
+print( fit )
+
+plot(fit , intercept = FALSE ,
+     show.weights = FALSE )
+
+##Atributele obiectului "fit"
+attributes(fit)
+
+fit$result.matrix
+
+pred <- compute(fit , data[-train ,2:7])
+
+## [-Train] = subsetul de testare
+head(pred$net.result ,6)
+
+r2 <- ifelse( pred$net.result <= 0.5 , -1, 1)
+head (r2 ,6)
+
+table(sign(r2),sign(data[-train ,1]) ,
+      dnn =c("Predicted" , "Observed"))
+
+error_rate = (1- sum( sign(r2) == sign(
+  data[-train ,1]) )/406 )
+round( error_rate ,3)
+
+
+
+
+
+
+
+
+
+
+
